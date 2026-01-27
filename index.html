@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMINAL DE GESTIÓN DE FACCIÓN v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --p-color: #fbbf24; /* Amber-400 */
+            --p-bg: #0a0a0b;
+            --p-panel: #16161a;
+            --p-border: #27272a;
+        }
+
+        .light {
+            --p-color: #2563eb;
+            --p-bg: #f8fafc;
+            --p-panel: #ffffff;
+            --p-border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--p-bg);
+            color: #d4d4d8;
+            transition: all 0.3s ease;
+        }
+
+        .terminal-font { font-family: 'Share Tech Mono', monospace; }
+
+        /* Estética Post-Apocalíptica */
+        .scanline {
+            width: 100%; height: 2px;
+            background: rgba(251, 191, 36, 0.1);
+            position: fixed; top: 0; z-index: 100;
+            pointer-events: none;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        .panel {
+            background-color: var(--p-panel);
+            border: 1px solid var(--p-border);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--p-color); opacity: 0.7;
+        }
+
+        input, select {
+            background: #0f0f12 !important;
+            border: 1px solid #3f3f46 !important;
+            color: #fff !important;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input:focus { border-color: var(--p-color) !important; }
+
+        .tab-active {
+            background: var(--p-color) !important;
+            color: #000 !important;
+            font-weight: bold;
+            box-shadow: 0 0 15px var(--p-color);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--p-bg); }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--p-color); }
+
+        .alert-error { border: 2px solid #ef4444; animation: pulse-red 2s infinite; }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0px rgba(239, 68, 68, 0); }
+            50% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+            100% { box-shadow: 0 0 0px rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div class="scanline"></div>
+
+    <!-- HEADER BAR -->
+    <header class="bg-black border-b border-zinc-800 p-4 sticky top-0 z-50 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-4">
+            <div class="bg-amber-500 p-2 rounded text-black font-bold">
+                <i class="fa-solid fa-radiation animate-spin-slow"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tighter text-white">WASTELAND MANAGEMENT SYSTEM <span class="text-amber-500">v2.1</span></h1>
+                <p class="text-xs terminal-font text-zinc-500">DATA FEED: STABLE // SECTOR: 7-G</p>
+            </div>
+        </div>
+
+        <nav class="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800 gap-1 overflow-x-auto">
+            <button onclick="showTab('asentamiento')" id="btn-asentamiento" class="tab-btn px-4 py-1.5 rounded transition text-sm uppercase">Asentamiento</button>
+            <button onclick="showTab('infraestructura')" id="btn-infraestructura" class="tab-btn px-4 py-1.5 rounded transition text-sm uppercase">Infraestructura</button>
+            <button onclick="showTab('produccion')" id="btn-produccion" class="tab-btn px-4 py-1.5 rounded transition text-sm uppercase">Economía</button>
+            <button onclick="showTab('combate')" id="btn-combate" class="tab-btn px-4 py-1.5 rounded transition text-sm uppercase">Militar</button>
+            <button onclick="showTab('almacen')" id="btn-almacen" class="tab-btn px-4 py-1.5 rounded transition text-sm uppercase">Almacén</button>
+        </nav>
+
+        <div class="flex items-center gap-4">
+            <button onclick="toggleTheme()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-circle-half-stroke"></i></button>
+            <div class="text-right hidden sm:block">
+                <p class="text-xs text-zinc-500 uppercase">Estado Global</p>
+                <div id="global-status" class="text-green-500 text-sm font-bold">OPERATIVO</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 lg:p-6 flex-grow">
+        
+        <!-- DASHBOARD RESUMEN RÁPIDO -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+            <div class="panel p-3 bg-zinc-900/50">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Población</p>
+                <div class="flex items-end justify-between">
+                    <span id="dash-pop" class="text-2xl font-bold text-white">0</span>
+                    <span class="text-xs text-zinc-400">NPCs</span>
+                </div>
+            </div>
+            <div class="panel p-3 bg-zinc-900/50">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Energía</p>
+                <div class="flex items-end justify-between">
+                    <span id="dash-energy" class="text-2xl font-bold text-amber-500">0/0</span>
+                    <i class="fa-solid fa-bolt text-amber-500/30"></i>
+                </div>
+            </div>
+            <div class="panel p-3 bg-zinc-900/50">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Comida (Neto)</p>
+                <div class="flex items-end justify-between">
+                    <span id="dash-food" class="text-2xl font-bold text-green-500">+0.0</span>
+                    <i class="fa-solid fa-utensils text-green-500/30"></i>
+                </div>
+            </div>
+            <div class="panel p-3 bg-zinc-900/50">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Defensa</p>
+                <div class="flex items-end justify-between">
+                    <span id="dash-def" class="text-2xl font-bold text-blue-500">0%</span>
+                    <i class="fa-solid fa-shield-halved text-blue-500/30"></i>
+                </div>
+            </div>
+            <div class="panel p-3 bg-zinc-900/50">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold">Expansión</p>
+                <div class="flex items-end justify-between">
+                    <span id="dash-exp" class="text-2xl font-bold text-purple-500">1/1</span>
+                    <i class="fa-solid fa-map text-purple-500/30"></i>
+                </div>
+            </div>
+            <div class="panel p-3 bg-zinc-900/50 border-amber-500/50">
+                <p class="text-[10px] text-amber-500 uppercase font-bold">Nivel Facción</p>
+                <div class="flex items-end justify-between">
+                    <span id="dash-lvl" class="text-3xl font-black text-amber-500">1</span>
+                    <button onclick="checkLevelUp()" class="text-[10px] bg-amber-500 text-black px-1 rounded font-bold hover:bg-white transition">SUBIR</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALERTAS DE SISTEMA -->
+        <div id="system-alerts" class="mb-6 space-y-2"></div>
+
+        <!-- TAB: ASENTAMIENTO -->
+        <div id="tab-asentamiento" class="tab-content hidden animate-in fade-in duration-500">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Censo Detallado -->
+                <section class="panel p-6">
+                    <h2 class="text-amber-500 font-bold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-users-viewfinder"></i> CENSO POBLACIONAL
+                    </h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-xs text-zinc-500">ADULTOS (PESADO)</label>
+                            <input type="number" id="pop-heavy" value="0" min="0" oninput="calc()" class="w-full p-2 rounded">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs text-zinc-500">ADULTOS (NORMAL)</label>
+                            <input type="number" id="pop-normal" value="0" min="0" oninput="calc()" class="w-full p-2 rounded">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs text-zinc-500">ADULTOS (LIGERO)</label>
+                            <input type="number" id="pop-light" value="0" min="0" oninput="calc()" class="w-full p-2 rounded">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs text-zinc-500">NIÑOS</label>
+                            <input type="number" id="pop-kids" value="0" min="0" oninput="calc()" class="w-full p-2 rounded">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs text-zinc-500">ANCIANOS</label>
+                            <input type="number" id="pop-elders" value="0" min="0" oninput="calc()" class="w-full p-2 rounded">
+                        </div>
+                    </div>
+
+                    <div class="mt-8 p-4 bg-black/40 border border-zinc-800 rounded">
+                        <h3 class="text-xs text-zinc-500 font-bold mb-3 uppercase">Proyección de Crecimiento (Ciclo 30d)</h3>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm">Nacimientos Est.: <span id="calc-births" class="text-white font-bold">0</span></p>
+                                <p class="text-[10px] text-zinc-500">Fórmula: ([Pob. Total - Niños] / 4) / 2</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-red-400">Muerte Natural: <span id="calc-deaths">Todos los ancianos</span></p>
+                                <p class="text-[10px] text-zinc-500">Frecuencia: Cada 30 días</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Especialistas -->
+                <section class="panel p-6">
+                    <h2 class="text-amber-500 font-bold mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-graduation-cap"></i> ESPECIALISTAS Y CAPACITACIÓN</span>
+                        <span id="spec-total-count" class="text-xs bg-zinc-800 px-2 py-1 rounded text-white">Total: 0</span>
+                    </h2>
+                    
+                    <div class="h-64 overflow-y-auto space-y-4 pr-2">
+                        <!-- Categoría: Sustento -->
+                        <div class="border-l-2 border-green-500 pl-3">
+                            <p class="text-[10px] text-green-500 font-bold mb-2">RAMA SUSTENTO Y NATURALEZA</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm">Agricultores</span>
+                                    <div class="flex gap-1">
+                                        <input type="number" id="spec-agri-1" title="Aprendiz" placeholder="A" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-agri-2" title="Básico" placeholder="B" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-agri-3" title="Experto" placeholder="E" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-agri-4" title="Maestro" placeholder="M" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm">Ganaderos</span>
+                                    <div class="flex gap-1">
+                                        <input type="number" id="spec-gan-1" title="Aprendiz" placeholder="A" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-gan-2" title="Básico" placeholder="B" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-gan-3" title="Experto" placeholder="E" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-gan-4" title="Maestro" placeholder="M" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm">Pescadores</span>
+                                    <div class="flex gap-1">
+                                        <input type="number" id="spec-pes-1" title="Aprendiz" placeholder="A" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-pes-2" title="Básico" placeholder="B" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-pes-3" title="Experto" placeholder="E" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-pes-4" title="Maestro" placeholder="M" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Categoría: Construcción -->
+                        <div class="border-l-2 border-blue-500 pl-3">
+                            <p class="text-[10px] text-blue-500 font-bold mb-2">RAMA CONSTRUCCIÓN Y MANUFACTURA</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm">Constructores</span>
+                                    <div class="flex gap-1">
+                                        <input type="number" id="spec-con-1" placeholder="A" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-con-2" placeholder="B" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-con-3" placeholder="E" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-con-4" placeholder="M" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm">Ingenieros (S.E)</span>
+                                    <div class="flex gap-1">
+                                        <select id="spec-ing-sub" class="w-20 text-[10px] p-1">
+                                            <option value="none">Ninguna</option>
+                                            <option value="agri">Agrícola</option>
+                                            <option value="hidro">Hidráulico</option>
+                                            <option value="mec">Mecánico</option>
+                                            <option value="ind">Industrial</option>
+                                        </select>
+                                        <input type="number" id="spec-ing-1" placeholder="A" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                        <input type="number" id="spec-ing-4" placeholder="M" class="w-10 p-1 text-center text-xs" oninput="calc()">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- TAB: INFRAESTRUCTURA -->
+        <div id="tab-infraestructura" class="tab-content hidden space-y-6">
+            <div class="panel p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-amber-500 font-bold uppercase tracking-widest text-lg">Catálogo de Construcciones</h2>
+                    <div class="flex gap-4 text-xs terminal-font">
+                        <span class="text-blue-400">Total Edificios: <span id="building-count">0</span></span>
+                        <span class="text-amber-500">Gasto Energía: <span id="total-energy-cons">0</span> E/día</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-black/50 text-zinc-500 text-[10px] uppercase">
+                            <tr>
+                                <th class="p-3">Categoría / Tipo</th>
+                                <th class="p-3 text-center">N1</th>
+                                <th class="p-3 text-center">N2</th>
+                                <th class="p-3 text-center">N3</th>
+                                <th class="p-3 text-center">N4</th>
+                                <th class="p-3 text-center">N5</th>
+                                <th class="p-3">Estado/Requisito</th>
+                            </tr>
+                        </thead>
+                        <tbody id="building-grid" class="divide-y divide-zinc-800">
+                            <!-- JS inyectará filas aquí -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Calculador de Construcción Activa -->
+            <div class="panel p-6 border-amber-500/30">
+                <h3 class="text-amber-500 font-bold mb-4 uppercase">Terminal de Obra Nueva</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div>
+                        <label class="text-xs text-zinc-500">TIEMPO BASE (DÍAS)</label>
+                        <input type="number" id="build-base-time" value="10" class="w-full p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="text-xs text-zinc-500">MANO DE OBRA ASIGNADA (PUNTOS)</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="build-manpower" value="5" class="w-full p-2 rounded">
+                            <button onclick="calculateManpower()" class="bg-zinc-800 px-2 rounded" title="Calcular según censo"><i class="fa-solid fa-calculator"></i></button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-zinc-500">MODO DE CONSTRUCCIÓN</label>
+                        <select id="build-mode" class="w-full p-2 rounded" onchange="calcBuild()">
+                            <option value="1.0">Normal (Estándar)</option>
+                            <option value="0.5">Acelerada (-20% Calidad, +50% Vel)</option>
+                            <option value="2.0">Sin Presión (+30% Calidad, 2x Tiempo)</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col justify-end">
+                        <div class="bg-black p-3 border border-amber-500 rounded text-center">
+                            <p class="text-[10px] text-zinc-500 uppercase">Tiempo Final Estimado</p>
+                            <span id="build-result" class="text-2xl font-bold text-amber-500">0.0 DÍAS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: ECONOMÍA (Producción/Conversión) -->
+        <div id="tab-produccion" class="tab-content hidden space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Agricultura -->
+                <div class="panel p-4">
+                    <h3 class="text-green-500 font-bold mb-4 flex justify-between">
+                        <span>AGRICULTURA</span>
+                        <i class="fa-solid fa-wheat-awn"></i>
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-zinc-500">Nivel de Huerto Activo:</span>
+                            <select id="prod-agri-lvl" class="bg-transparent text-white" onchange="calc()">
+                                <option value="0">Ninguno</option>
+                                <option value="5">N1 (Huerto)</option>
+                                <option value="15">N2 (Pequeña)</option>
+                                <option value="30">N3 (Media)</option>
+                                <option value="60">N4 (Grande)</option>
+                                <option value="120">N5 (Plantación)</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-zinc-500">Tipo de Cultivo:</span>
+                            <select id="prod-agri-type" class="bg-transparent text-white" onchange="calc()">
+                                <option value="1.0">Granos (1.0)</option>
+                                <option value="0.8">Verduras (0.8)</option>
+                                <option value="1.2">Frutas (1.2)</option>
+                                <option value="1.5">Especiales (1.5)</option>
+                            </select>
+                        </div>
+                        <div class="pt-4 border-t border-zinc-800">
+                            <p class="text-2xl font-bold text-white"><span id="res-agri">0.0</span> <span class="text-xs text-zinc-500">rac/día</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ganadería -->
+                <div class="panel p-4">
+                    <h3 class="text-red-500 font-bold mb-4 flex justify-between">
+                        <span>GANADERÍA</span>
+                        <i class="fa-solid fa-cow"></i>
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="ani-gallina" placeholder="Gallinas" class="p-1 text-xs rounded" oninput="calc()">
+                            <input type="number" id="ani-cerdo" placeholder="Cerdos" class="p-1 text-xs rounded" oninput="calc()">
+                            <input type="number" id="ani-oveja" placeholder="Ovejas" class="p-1 text-xs rounded" oninput="calc()">
+                            <input type="number" id="ani-vaca" placeholder="Vacas" class="p-1 text-xs rounded" oninput="calc()">
+                        </div>
+                        <div class="flex justify-between text-[10px] text-zinc-500">
+                            <span>Estado Nutricional:</span>
+                            <span id="res-ani-nutri">100%</span>
+                        </div>
+                        <div class="pt-2 border-t border-zinc-800 flex justify-between items-center">
+                            <div>
+                                <p class="text-lg font-bold text-white"><span id="res-ani-meat">0.0</span> <span class="text-[10px] text-zinc-500">carne</span></p>
+                                <p class="text-[10px] text-zinc-400">Subproductos: <span id="res-ani-spec">0.0</span></p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-red-500 uppercase">Consumo Anim.</p>
+                                <p class="text-sm font-bold text-red-500"><span id="res-ani-cons">0.0</span> rac</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pesca -->
+                <div class="panel p-4">
+                    <h3 class="text-blue-500 font-bold mb-4 flex justify-between">
+                        <span>PESCA</span>
+                        <i class="fa-solid fa-fish"></i>
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between text-xs">
+                            <span>Zona de Pesca:</span>
+                            <select id="prod-fish-zone" class="bg-transparent" onchange="calc()">
+                                <option value="0.5">N1-2 (x0.5)</option>
+                                <option value="1.0" selected>N3-4 (x1.0)</option>
+                                <option value="2.0">N5 (x2.0)</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span>Instrumento:</span>
+                            <select id="prod-fish-tool" class="bg-transparent" onchange="calc()">
+                                <option value="1.0">Caña/Bote (1.0)</option>
+                                <option value="1.5">Bote Remos (1.5)</option>
+                                <option value="3.0">Barco Pesquero (3.0)</option>
+                            </select>
+                        </div>
+                        <div class="pt-4 border-t border-zinc-800">
+                            <p class="text-2xl font-bold text-white"><span id="res-fish">0.0</span> <span class="text-xs text-zinc-500">rac/día</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SISTEMA DE CONVERSIÓN -->
+            <div class="panel p-6">
+                <h3 class="text-amber-500 font-bold mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-spin"></i> CADENAS DE CONVERSIÓN INDUSTRIAL
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Tech -->
+                    <div class="bg-black/30 p-4 rounded border border-zinc-800">
+                        <p class="text-[10px] text-blue-400 font-bold uppercase mb-3">Electrónica</p>
+                        <div class="space-y-2">
+                            <button onclick="convert('scrap-comp')" class="w-full text-left text-xs p-2 hover:bg-zinc-800 flex justify-between rounded">
+                                <span>2 Chatarra → 1 Comp.</span>
+                                <i class="fa-solid fa-gear"></i>
+                            </button>
+                            <button onclick="convert('comp-elec')" class="w-full text-left text-xs p-2 hover:bg-zinc-800 flex justify-between rounded">
+                                <span>2 Comp. → 1 Electrónico</span>
+                                <i class="fa-solid fa-microchip"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Construcción -->
+                    <div class="bg-black/30 p-4 rounded border border-zinc-800">
+                        <p class="text-[10px] text-zinc-400 font-bold uppercase mb-3">Materiales Pesados</p>
+                        <div class="space-y-2">
+                            <button onclick="convert('piedra-conc')" class="w-full text-left text-xs p-2 hover:bg-zinc-800 flex justify-between rounded">
+                                <span>3 Piedra → 1 Concreto</span>
+                                <i class="fa-solid fa-trowel-bricks"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Químico/Médico -->
+                    <div class="bg-black/30 p-4 rounded border border-zinc-800">
+                        <p class="text-[10px] text-red-400 font-bold uppercase mb-3">Química y Medicina</p>
+                        <div class="space-y-2 text-xs">
+                            <p class="p-2 border border-zinc-800 rounded">2 Chat. + 1 Comp. → 1 Químico</p>
+                            <p class="p-2 border border-zinc-800 rounded">1 Tela + 1 Quím. → 1 S. Médico</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: MILITAR (Combate/Defensa) -->
+        <div id="tab-combate" class="tab-content hidden space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Defensores -->
+                <div class="panel p-6 border-blue-500/20">
+                    <h3 class="text-blue-500 font-bold mb-4 uppercase italic">Configuración Defensiva</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-zinc-500">N° DEFENSORES</label>
+                            <input type="number" id="mil-def-num" value="0" class="w-full p-2 rounded">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-zinc-500">NIVEL EXPERIENCIA</label>
+                            <select id="mil-def-xp" class="w-full p-2 rounded">
+                                <option value="0.8">Normal (0.8)</option>
+                                <option value="1.0">Experimentado (1.0)</option>
+                                <option value="1.5">Especialista (1.5)</option>
+                                <option value="2.0">Veterano (2.0)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- Atacantes -->
+                <div class="panel p-6 border-red-500/20">
+                    <h3 class="text-red-500 font-bold mb-4 uppercase italic">Fuerza Hostil Detectada</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-zinc-500">N° ATACANTES</label>
+                            <input type="number" id="mil-atk-num" value="0" class="w-full p-2 rounded">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-zinc-500">PODER ESTIMADO</label>
+                            <input type="number" id="mil-atk-pow" value="0" class="w-full p-2 rounded">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULTADO COMBATE -->
+            <div class="panel p-8 bg-black/40 text-center">
+                <h2 class="text-xs text-zinc-500 font-bold mb-2 uppercase tracking-[0.3em]">Resolución de Enfrentamiento</h2>
+                <div id="mil-res-text" class="text-4xl font-black text-white mb-4 italic">SIN DATOS</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-zinc-900 p-3 rounded">
+                        <p class="text-[10px] text-zinc-500">Poder Defensa</p>
+                        <span id="mil-res-defpow" class="text-xl font-bold">0</span>
+                    </div>
+                    <div class="bg-zinc-900 p-3 rounded">
+                        <p class="text-[10px] text-zinc-500">Prob. Supervivencia</p>
+                        <span id="mil-res-prob" class="text-xl font-bold">0%</span>
+                    </div>
+                    <div class="bg-zinc-900 p-3 rounded">
+                        <p class="text-[10px] text-zinc-500">Bajas Estimadas</p>
+                        <span id="mil-res-cas" class="text-xl font-bold text-red-500">0</span>
+                    </div>
+                </div>
+                <button onclick="calcCombat()" class="mt-8 bg-amber-500 text-black px-12 py-3 font-bold rounded hover:bg-white transition uppercase">Ejecutar Simulación</button>
+            </div>
+        </div>
+
+        <!-- TAB: ALMACÉN (Inventario Global) -->
+        <div id="tab-almacen" class="tab-content hidden">
+            <div class="panel p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-amber-500 font-bold uppercase text-lg">Control de Suministros</h2>
+                    <select id="inv-view" class="bg-zinc-800 text-xs p-1 rounded">
+                        <option value="1">Vista Diaria</option>
+                        <option value="7">Vista Semanal</option>
+                        <option value="30">Vista Mensual</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <!-- Inventario interactivo -->
+                    <div class="bg-black/40 p-3 rounded border border-zinc-800">
+                        <p class="text-[10px] text-zinc-500 uppercase font-bold">Comida Total</p>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="inv-food" value="0" class="bg-transparent border-none text-xl font-bold w-full">
+                            <span class="text-[10px] text-green-500" id="inv-food-delta">+0</span>
+                        </div>
+                    </div>
+                    <div class="bg-black/40 p-3 rounded border border-zinc-800">
+                        <p class="text-[10px] text-zinc-500 uppercase font-bold">Herramientas</p>
+                        <input type="number" id="inv-tools" value="0" class="bg-transparent border-none text-xl font-bold w-full">
+                    </div>
+                    <div class="bg-black/40 p-3 rounded border border-zinc-800">
+                        <p class="text-[10px] text-zinc-500 uppercase font-bold">Munición (Balas)</p>
+                        <input type="number" id="inv-ammo" value="0" class="bg-transparent border-none text-xl font-bold w-full">
+                    </div>
+                    <div class="bg-black/40 p-3 rounded border border-zinc-800">
+                        <p class="text-[10px] text-zinc-500 uppercase font-bold">Madera</p>
+                        <input type="number" id="inv-wood" value="0" class="bg-transparent border-none text-xl font-bold w-full">
+                    </div>
+                    <div class="bg-black/40 p-3 rounded border border-zinc-800">
+                        <p class="text-[10px] text-zinc-500 uppercase font-bold">Metal</p>
+                        <input type="number" id="inv-metal" value="0" class="bg-transparent border-none text-xl font-bold w-full">
+                    </div>
+                </div>
+
+                <div class="mt-8 flex gap-4">
+                    <button class="bg-zinc-800 hover:bg-zinc-700 px-6 py-2 rounded text-xs uppercase font-bold">Guardar Cambios</button>
+                    <button class="border border-zinc-700 hover:bg-zinc-800 px-6 py-2 rounded text-xs uppercase font-bold">Exportar Reporte</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="p-4 text-center border-t border-zinc-900 text-[10px] terminal-font text-zinc-600">
+        &copy; 2026 WASTELAND OS v2.1 // ENCRYPTED CONNECTION // NO CARRIERS DETECTED
+    </footer>
+
+    <!-- LÓGICA DEL SISTEMA -->
+    <script>
+        const BUILDINGS_DATA = [
+            { cat: 'Defensa', name: 'Murallas', lvls: [
+                {n:1, t:2, m:'30 mad, 10 herr', b:'+10% Def'},
+                {n:2, t:4, m:'60 mad, 25 met, 15 herr', b:'+25% Def'},
+                {n:3, t:7, m:'100 mad, 50 met, 40 pied', b:'+40% Def'},
+                {n:4, t:12, m:'150 pied, 80 met, 30 herr', b:'+60% Def'},
+                {n:5, t:20, m:'300 pied, 150 met, 50 conc', b:'+80% Def'}
+            ]},
+            { cat: 'Recurso', name: 'Zonas Recolección', lvls: [
+                {n:1, t:1, m:'10 herr, 5 cont', b:'5 u/día'},
+                {n:2, t:2.5, m:'25 herr, 15 cont, 10 mad', b:'10 u/día'},
+                {n:3, t:4, m:'50 herr, 30 cont, 25 mad, 10 met', b:'15 u/día'},
+                {n:4, t:7, m:'100 herr, 60 cont, 50 met, 25 comp', b:'20 u/día'},
+                {n:5, t:12, m:'200 herr, 120 cont, 100 met, 50 comp, 25 E', b:'30 u/día'}
+            ]},
+            { cat: 'Habitación', name: 'Viviendas', lvls: [
+                {n:1, t:1, m:'15 mad, 10 tela, 5 herr', b:'5 Hab, -10% Com'},
+                {n:2, t:2, m:'30 mad, 20 tela, 15 herr', b:'10 Hab, -15% Com'},
+                {n:3, t:3.5, m:'60 mad, 30 pied, 25 herr, 10 met', b:'20 Hab, -20% Com'},
+                {n:4, t:6, m:'100 mad, 60 pied, 40 met, 30 herr', b:'40 Hab, -25% Com'},
+                {n:5, t:10, m:'200 mad, 120 pied, 80 met, 50 conc, 40 E', b:'80 Hab, -30% Com'}
+            ]},
+            { cat: 'Energía', name: 'Eólica (Molinos)', lvls: [
+                {n:1, t:2, m:'80 mad, 30 met, 20 herr', b:'+15 E/día'},
+                {n:2, t:3.5, m:'140 mad, 60 met, 40 herr, 25 comp', b:'+25 E/día'},
+                {n:3, t:6, m:'200 mad, 100 met, 70 herr, 50 comp', b:'+50 E/día'}
+            ]}
+        ];
+
+        let state = {
+            lvl: 1,
+            pop: 0,
+            energy: { gen: 0, cons: 0 },
+            food: { prod: 0, cons: 0 },
+            buildings: {}
+        };
+
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+            document.getElementById('tab-'+id).classList.remove('hidden');
+            document.getElementById('btn-'+id).classList.add('tab-active');
+        }
+
+        function init() {
+            const grid = document.getElementById('building-grid');
+            BUILDINGS_DATA.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-zinc-900/40 transition";
+                let html = `<td class="p-3"><p class="font-bold text-white text-xs">${b.name}</p><p class="text-[10px] text-zinc-500">${b.cat}</p></td>`;
+                
+                for(let i=1; i<=5; i++) {
+                    const lvlData = b.lvls.find(l => l.n === i);
+                    if(lvlData) {
+                        html += `<td class="p-2 text-center">
+                            <input type="number" min="0" value="0" oninput="updateBuildings('${b.name}', ${i}, this.value)" 
+                            class="w-10 bg-zinc-800 text-xs text-center rounded border border-zinc-700">
+                        </td>`;
+                    } else {
+                        html += `<td class="p-2 text-center text-zinc-800">-</td>`;
+                    }
+                }
+                
+                html += `<td class="p-3 text-[10px] text-zinc-500 italic">Ver manual</td>`;
+                tr.innerHTML = html;
+                grid.appendChild(tr);
+            });
+            showTab('asentamiento');
+            calc();
+        }
+
+        function updateBuildings(name, lvl, val) {
+            if(!state.buildings[name]) state.buildings[name] = {};
+            state.buildings[name][lvl] = parseInt(val) || 0;
+            calc();
+        }
+
+        function calc() {
+            // POBLACIÓN
+            const h = parseInt(document.getElementById('pop-heavy').value) || 0;
+            const n = parseInt(document.getElementById('pop-normal').value) || 0;
+            const l = parseInt(document.getElementById('pop-light').value) || 0;
+            const k = parseInt(document.getElementById('pop-kids').value) || 0;
+            const e = parseInt(document.getElementById('pop-elders').value) || 0;
+            state.pop = h + n + l + k + e;
+
+            // CONSUMO COMIDA HUMANOS
+            let foodCons = (h * 1.5) + (n * 1.2) + (l * 1.0) + (k * 0.5) + (e * 0.7);
+            
+            // BUSCAR BUFF VIVIENDAS (Max)
+            let foodBuff = 0;
+            if(state.buildings['Viviendas']) {
+                Object.keys(state.buildings['Viviendas']).forEach(lvl => {
+                    if(state.buildings['Viviendas'][lvl] > 0) {
+                        const bVal = [0, 0.1, 0.15, 0.2, 0.25, 0.3][lvl];
+                        if(bVal > foodBuff) foodBuff = bVal;
+                    }
+                });
+            }
+            foodCons = foodCons * (1 - foodBuff);
+
+            // ANIMALES
+            const g = parseInt(document.getElementById('ani-gallina').value) || 0;
+            const c = parseInt(document.getElementById('ani-cerdo').value) || 0;
+            const o = parseInt(document.getElementById('ani-oveja').value) || 0;
+            const v = parseInt(document.getElementById('ani-vaca').value) || 0;
+            const aniCons = (g * 0.2) + (o * 3.0) + (c * 5.0) + (v * 10.0);
+            
+            // PRODUCCIÓN COMIDA
+            const agriBase = parseInt(document.getElementById('prod-agri-lvl').value) || 0;
+            const agriType = parseFloat(document.getElementById('prod-agri-type').value) || 1;
+            const agriProd = agriBase * agriType;
+
+            const aniMeat = (g * 0.5) + (c * 2.0) + (o * 3.0) + (v * 5.0);
+
+            // ENERGÍA
+            let enGen = 0;
+            let enCons = 0;
+            // Cálculo simplificado de energía desde edificios guardados
+            if(state.buildings['Eólica (Molinos)']) {
+                enGen += (state.buildings['Eólica (Molinos)'][1] || 0) * 15;
+                enGen += (state.buildings['Eólica (Molinos)'][2] || 0) * 25;
+                enGen += (state.buildings['Eólica (Molinos)'][3] || 0) * 50;
+            }
+
+            // ACTUALIZAR UI
+            document.getElementById('dash-pop').innerText = state.pop;
+            document.getElementById('dash-food').innerText = (agriProd + aniMeat - foodCons - aniCons).toFixed(1);
+            document.getElementById('res-agri').innerText = agriProd.toFixed(1);
+            document.getElementById('res-ani-meat').innerText = aniMeat.toFixed(1);
+            document.getElementById('res-ani-cons').innerText = aniCons.toFixed(1);
+            document.getElementById('dash-energy').innerText = `${enGen}/${enCons}`;
+            
+            document.getElementById('calc-births').innerText = Math.floor(((state.pop - k) / 4) / 2);
+            
+            updateAlerts();
+        }
+
+        function updateAlerts() {
+            const container = document.getElementById('system-alerts');
+            container.innerHTML = "";
+            
+            if(state.pop > 0 && state.pop < 10 && state.lvl > 1) {
+                addAlert("Población crítica para Nivel de Facción", "warning");
+            }
+        }
+
+        function addAlert(msg, type) {
+            const div = document.createElement('div');
+            div.className = `p-2 text-[10px] terminal-font rounded flex items-center gap-2 ${type === 'warning' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/50' : 'bg-red-500/10 text-red-500 border border-red-500/50'}`;
+            div.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> [ALERTA]: ${msg}`;
+            document.getElementById('system-alerts').appendChild(div);
+        }
+
+        function calcBuild() {
+            const base = parseFloat(document.getElementById('build-base-time').value) || 0;
+            const man = parseFloat(document.getElementById('build-manpower').value) || 1;
+            const mode = parseFloat(document.getElementById('build-mode').value) || 1;
+            const res = (base / man) * mode;
+            document.getElementById('build-result').innerText = res.toFixed(1) + " DÍAS";
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('light');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
