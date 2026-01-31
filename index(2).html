@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G.E.S.T.O.R. v6.1 - Edición Master Final</title>
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        tech: ['Rajdhani', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#f59e0b', // Amber
+                        accent: '#0ea5e9', // Sky
+                        bg: '#0f172a', // Slate 900
+                        panel: 'rgba(30, 41, 59, 0.7)', 
+                        border: 'rgba(255, 255, 255, 0.1)',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            background-image: radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.1) 0px, transparent 50%),
+                              radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+        .panel-glass {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        input, select, textarea {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+        /* Eliminar flechas de inputs numéricos */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .tab-content { display: none; opacity: 0; animation: fadeIn 0.3s forwards; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { to { opacity: 1; } }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+
+        /* Estilo Formulas */
+        .formula-box {
+            background: rgba(0,0,0,0.3);
+            border-left: 3px solid #f59e0b;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+        }
+        .formula-title {
+            color: #f59e0b;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans overflow-x-hidden text-sm">
+
+    <!-- MODAL: CONVERSIÓN -->
+    <div id="modal-convert" class="fixed inset-0 z-[80] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="panel-glass max-w-sm w-full p-6 rounded-xl relative border-t-4 border-primary">
+            <h3 class="text-lg font-bold font-tech text-primary mb-4 uppercase flex items-center gap-2">
+                <i class="fa-solid fa-rotate"></i> Convertir Recurso
+            </h3>
+            <p id="convert-desc" class="text-sm mb-4 opacity-70 font-mono">Transformar X en Y</p>
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="convert-amount" class="w-full p-2 text-center font-bold" placeholder="Cantidad">
+                <button onclick="executeConversion(false)" class="bg-primary text-black font-bold px-4 py-2 rounded hover:brightness-110">OK</button>
+            </div>
+            <div class="space-y-2">
+                <button onclick="executeConversion(true)" class="w-full bg-white/10 hover:bg-white/20 py-2 rounded text-xs font-bold uppercase tracking-wider border border-white/5 transition">
+                    Convertir Máximo Posible
+                </button>
+                <button onclick="document.getElementById('modal-convert').classList.add('hidden')" class="w-full text-xs opacity-50 hover:opacity-100 py-2">
+                    Cancelar Operación
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMACIÓN GUARDADO -->
+    <div id="modal-save-confirm" class="fixed inset-0 z-[100] bg-black/90 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="panel-glass max-w-md w-full p-6 rounded-xl border-l-4 border-green-500 relative animate-fade-in text-center">
+            <i class="fa-solid fa-file-circle-check text-5xl text-green-500 mb-4"></i>
+            <h3 class="text-xl font-bold text-white mb-2 uppercase">Archivo Descargado</h3>
+            <p class="text-sm opacity-70 mb-6">Tu copia de seguridad ha sido generada exitosamente.</p>
+            
+            <div class="bg-black/40 p-4 rounded border border-white/10 flex items-center gap-4 mb-6 cursor-pointer hover:bg-white/5 transition" onclick="alert('Busca el archivo en tu carpeta de Descargas.')">
+                <i class="fa-solid fa-file-code text-3xl text-primary opacity-80"></i>
+                <div class="text-left overflow-hidden">
+                    <div class="text-xs font-bold text-white truncate" id="save-filename">faction_data.json</div>
+                    <div class="text-[10px] text-gray-400">Clic para más info</div>
+                </div>
+            </div>
+
+            <button onclick="document.getElementById('modal-save-confirm').classList.add('hidden')" class="w-full bg-white/10 hover:bg-white/20 py-2 rounded font-bold uppercase text-xs transition">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- MODAL: PASSWORD -->
+    <div id="modal-password" class="fixed inset-0 z-[90] bg-black/95 hidden flex items-center justify-center">
+        <div class="panel-glass max-w-md w-full p-8 rounded-xl border border-red-500/30 text-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-red-500/5 z-0"></div>
+            <div class="relative z-10">
+                <i class="fa-solid fa-fingerprint text-5xl text-red-500 mb-6 animate-pulse"></i>
+                <h3 class="text-xl font-bold text-red-500 mb-2 font-tech uppercase tracking-widest">Acceso Restringido</h3>
+                <p class="text-sm opacity-70 mb-6 font-mono">Archivo encriptado. Ingrese credenciales.</p>
+                <input type="password" id="filePassInput" class="w-full p-3 rounded text-center text-xl font-mono mb-6 bg-black/50 border-red-900 focus:border-red-500 text-red-100" placeholder="_CLAVE">
+                <div class="flex gap-3 justify-center">
+                    <button onclick="document.getElementById('modal-password').classList.add('hidden')" class="px-4 py-2 text-xs uppercase opacity-50 hover:opacity-100">Cancelar</button>
+                    <button onclick="verifyPassword()" class="bg-red-600 hover:bg-red-500 text-white px-8 py-2 rounded font-bold uppercase tracking-widest text-sm shadow-lg shadow-red-900/50">Desbloquear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVBAR -->
+    <nav class="sticky top-0 z-50 panel-glass border-b border-border">
+        <div class="container mx-auto px-4 h-16 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <i class="fa-solid fa-biohazard text-white text-xl"></i>
+                </div>
+                <div class="leading-none hidden md:block">
+                    <h1 class="font-tech text-2xl font-bold tracking-wider text-primary">G.E.S.T.O.R.</h1>
+                    <span class="text-[10px] font-mono opacity-50 tracking-[0.3em] uppercase block mt-1">v6.1 Edición Master</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <select onchange="setTheme(this.value)" class="text-xs font-bold uppercase px-2 py-1.5 rounded cursor-pointer bg-white/5 border border-white/10 focus:bg-black">
+                    <option value="dark">Oscuro</option>
+                    <option value="light">Claro</option>
+                    <option value="terminal">Terminal</option>
+                    <option value="wasteland">Wasteland</option>
+                </select>
+                <button onclick="saveSystem()" title="Guardar (JSON)" class="w-9 h-9 flex items-center justify-center rounded bg-primary/20 text-primary hover:bg-primary hover:text-white transition shadow-lg"><i class="fa-solid fa-floppy-disk"></i></button>
+                <button onclick="document.getElementById('file-upload').click()" class="h-9 px-4 rounded bg-accent/20 text-accent hover:bg-accent hover:text-white transition font-bold text-xs uppercase flex items-center gap-2"><i class="fa-solid fa-upload"></i> Cargar</button>
+                <input type="file" id="file-upload" class="hidden" accept=".json" onchange="loadSystem(this)">
+            </div>
+        </div>
+        <div class="container mx-auto px-4 flex overflow-x-auto no-scrollbar gap-1 py-1">
+            <button onclick="setTab('general')" class="tab-btn active px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="general">General</button>
+            <button onclick="setTab('resources')" class="tab-btn px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="resources">Recursos</button>
+            <button onclick="setTab('labor')" class="tab-btn px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="labor">Mano de Obra</button>
+            <button onclick="setTab('specialists')" class="tab-btn px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="specialists">Especialistas</button>
+            <button onclick="setTab('infrastructure')" class="tab-btn px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="infrastructure">Infraestructura</button>
+            <button onclick="setTab('production')" class="tab-btn px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="production">Producción</button>
+            <button onclick="setTab('military')" class="tab-btn px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="military">Militar</button>
+            <button onclick="setTab('formulas')" class="tab-btn px-3 py-2 hover:bg-white/5 text-xs font-bold uppercase tracking-wider rounded-t border-b-2 border-transparent transition" data-target="formulas">Fórmulas</button>
+        </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="container mx-auto px-4 py-6 flex-grow space-y-6">
+
+        <!-- TAB: GENERAL -->
+        <div id="general" class="tab-content active">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Identidad -->
+                <div class="panel-glass p-6 rounded-xl border-l-4 border-primary relative overflow-hidden group">
+                    <h3 class="text-xs font-bold uppercase opacity-50 mb-2 tracking-widest">Identidad de Facción</h3>
+                    <input type="text" id="factionName" class="w-full bg-transparent border-none text-4xl font-tech font-bold p-0 focus:ring-0 placeholder-opacity-20 mb-4" placeholder="NOMBRE DE FACCIÓN" oninput="updateState()">
+                    
+                    <div class="flex gap-6 items-center">
+                        <div class="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-lg border border-white/5">
+                            <span class="text-xs uppercase font-bold text-primary">Nivel</span>
+                            <input type="number" id="factionLevel" value="1" min="1" max="5" class="w-12 bg-transparent text-center font-mono font-bold border-none p-0 focus:ring-0 text-xl" oninput="updateState()">
+                        </div>
+                        <div class="flex flex-col flex-grow">
+                            <span class="text-[10px] uppercase opacity-50 flex justify-between">
+                                <span>Progreso General</span> 
+                                <span id="level-percent">0%</span>
+                            </span>
+                            <div class="w-full h-1.5 bg-black/40 rounded-full mt-1 overflow-hidden">
+                                <div id="level-progress-bar" class="h-full bg-primary w-0 transition-all duration-1000 shadow-[0_0_10px_var(--color-primary)]"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- REQUISITOS NIVEL (NUEVO) -->
+                    <div class="mt-4 bg-black/20 p-3 rounded border border-white/5">
+                        <h4 class="text-[10px] font-bold uppercase text-accent mb-2">Requisitos para Nivel <span id="next-level-num">2</span></h4>
+                        <div class="grid grid-cols-3 gap-2 text-[9px] font-mono">
+                            <div>
+                                <span class="block opacity-50">Población</span>
+                                <span id="req-pop-status" class="text-white">0 / 0</span>
+                            </div>
+                            <div>
+                                <span class="block opacity-50">Edificios</span>
+                                <span id="req-build-status" class="text-white">0 / 0</span>
+                            </div>
+                            <div>
+                                <span class="block opacity-50">Especialistas</span>
+                                <span id="req-spec-status" class="text-white">0 / 0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen General -->
+                <div class="panel-glass p-6 rounded-xl border-l-4 border-accent">
+                    <h3 class="text-xs font-bold uppercase opacity-50 mb-4 tracking-widest">Resumen General</h3>
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div class="bg-black/20 p-2 rounded">
+                            <span class="block text-[10px] opacity-50 uppercase">Población Total</span>
+                            <span class="text-2xl font-mono font-bold text-white" id="summary-pop">0</span>
+                        </div>
+                        <div class="bg-black/20 p-2 rounded">
+                            <span class="block text-[10px] opacity-50 uppercase">Edificios Activos</span>
+                            <span class="text-2xl font-mono font-bold text-white" id="summary-builds">0</span>
+                        </div>
+                        <div class="bg-black/20 p-2 rounded">
+                            <span class="block text-[10px] opacity-50 uppercase">Balance Energético</span>
+                            <span class="text-xl font-mono font-bold text-yellow-400" id="summary-energy">0</span>
+                        </div>
+                        <div class="bg-black/20 p-2 rounded">
+                            <span class="block text-[10px] opacity-50 uppercase">Balance Comida</span>
+                            <span class="text-xl font-mono font-bold text-green-400" id="summary-food">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: RECURSOS -->
+        <div id="resources" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="panel-glass p-5 rounded-xl">
+                        <h3 class="font-tech font-bold text-lg text-primary uppercase border-b border-white/10 pb-2 mb-4">Recursos Primarios</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="res-primary-grid"></div>
+                    </div>
+                    <div class="panel-glass p-5 rounded-xl">
+                        <h3 class="font-tech font-bold text-lg text-accent uppercase border-b border-white/10 pb-2 mb-4">Bienes de Producción</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="res-production-grid"></div>
+                    </div>
+                    <div class="panel-glass p-5 rounded-xl">
+                        <h3 class="font-tech font-bold text-lg text-gray-400 uppercase border-b border-white/10 pb-2 mb-4">Materiales Procesados</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="res-conversion-grid"></div>
+                    </div>
+                </div>
+                <div class="panel-glass p-0 rounded-xl flex flex-col h-[calc(100vh-200px)] lg:h-auto border-l-4 border-primary overflow-hidden">
+                    <div class="p-5 bg-black/20 border-b border-white/10">
+                        <h3 class="font-tech font-bold text-lg uppercase flex items-center gap-2">
+                            <i class="fa-solid fa-rotate text-primary animate-spin-slow"></i> Centro de Conversión
+                        </h3>
+                    </div>
+                    <div class="overflow-y-auto custom-scroll p-4 space-y-2 flex-grow bg-black/10" id="conversion-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: MANO DE OBRA -->
+        <div id="labor" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Censo -->
+                <div class="panel-glass p-6 rounded-xl">
+                    <h3 class="font-tech font-bold uppercase text-lg mb-4 text-accent">Censo Laboral</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between bg-black/20 p-2 rounded">
+                            <label class="text-xs font-bold uppercase w-1/2">Pesado (Soldados/Min)</label>
+                            <input type="number" id="pop-heavy" value="0" class="w-20 text-center font-bold bg-transparent border-b border-white/20" oninput="updateState()">
+                        </div>
+                        <div class="flex items-center justify-between bg-black/20 p-2 rounded">
+                            <label class="text-xs font-bold uppercase w-1/2">Medio (Agri/Tec)</label>
+                            <input type="number" id="pop-medium" value="0" class="w-20 text-center font-bold bg-transparent border-b border-white/20" oninput="updateState()">
+                        </div>
+                        <div class="flex items-center justify-between bg-black/20 p-2 rounded">
+                            <label class="text-xs font-bold uppercase w-1/2">Ligero (Med/Inv)</label>
+                            <input type="number" id="pop-light" value="0" class="w-20 text-center font-bold bg-transparent border-b border-white/20" oninput="updateState()">
+                        </div>
+                        <div class="flex items-center justify-between bg-black/20 p-2 rounded opacity-70">
+                            <label class="text-xs font-bold uppercase w-1/2">Niños</label>
+                            <input type="number" id="pop-kids" value="0" class="w-20 text-center font-bold bg-transparent border-b border-white/20" oninput="updateState()">
+                        </div>
+                        <div class="flex items-center justify-between bg-black/20 p-2 rounded opacity-70">
+                            <label class="text-xs font-bold uppercase w-1/2">Ancianos</label>
+                            <input type="number" id="pop-elders" value="0" class="w-20 text-center font-bold bg-transparent border-b border-white/20" oninput="updateState()">
+                        </div>
+                        <hr class="border-white/10">
+                        <div class="flex justify-between text-sm font-bold">
+                            <span>Total Adultos (Mano de Obra):</span>
+                            <span id="total-adults" class="text-primary">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalle de Uso -->
+                <div class="lg:col-span-2 panel-glass p-6 rounded-xl border-t-4 border-white">
+                    <h3 class="font-tech font-bold uppercase text-lg mb-4">Distribución de Mano de Obra</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div class="bg-blue-500/10 p-4 rounded border border-blue-500/30">
+                            <div class="text-[10px] uppercase opacity-50 text-blue-300">En Producción (Specs)</div>
+                            <div class="text-3xl font-bold font-mono text-blue-400" id="labor-prod">0</div>
+                        </div>
+                        <div class="bg-orange-500/10 p-4 rounded border border-orange-500/30">
+                            <div class="text-[10px] uppercase opacity-50 text-orange-300">En Construcción (Activa)</div>
+                            <div class="text-3xl font-bold font-mono text-orange-400" id="labor-const">0</div>
+                            <div class="text-[9px] opacity-50 mt-1">Calculado por obras en curso</div>
+                        </div>
+                        <div class="bg-green-500/10 p-4 rounded border border-green-500/30">
+                            <div class="text-[10px] uppercase opacity-50 text-green-300">Disponibles / Ociosos</div>
+                            <div class="text-3xl font-bold font-mono text-green-400" id="labor-free">0</div>
+                        </div>
+                    </div>
+                    <div id="labor-alert" class="mt-4 bg-red-500/20 border border-red-500 text-red-200 p-2 rounded text-center text-xs hidden font-bold">
+                        <i class="fa-solid fa-triangle-exclamation"></i> ALERTA: FALTAN TRABAJADORES. PROCESOS DETENIDOS.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: ESPECIALISTAS -->
+        <div id="specialists" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="panel-glass p-6 rounded-xl h-fit border-t-4 border-accent">
+                    <h3 class="font-tech font-bold uppercase text-accent mb-4 text-xl">Asignación</h3>
+                    <div class="space-y-5">
+                        <select id="spec-cat-select" class="w-full text-sm bg-black/30 p-2" onchange="renderSpecTypes()"></select>
+                        <select id="spec-type-select" class="w-full text-sm bg-black/30 p-2"></select>
+                        <div class="flex gap-4">
+                            <select id="spec-level-select" class="w-full text-sm bg-black/30 p-2 w-2/3">
+                                <option value="1.0">Aprendiz (x1.0)</option>
+                                <option value="1.5">Especialista (x1.5)</option>
+                                <option value="1.7">Experto (x1.7)</option>
+                                <option value="2.0">Maestro (x2.0)</option>
+                            </select>
+                            <input type="number" id="spec-qty-input" value="1" min="1" class="w-full text-sm p-2 text-center font-bold bg-black/30">
+                        </div>
+                        <button onclick="addSpecialist()" class="w-full bg-accent text-white font-bold py-3 rounded uppercase tracking-widest hover:brightness-110 transition">Asignar</button>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 panel-glass p-6 rounded-xl min-h-[400px]">
+                    <h3 class="font-tech font-bold uppercase mb-4 flex justify-between items-center text-xl">
+                        <span>Nómina Activa</span>
+                        <span class="text-xs opacity-80 font-mono bg-accent/10 text-accent px-3 py-1 rounded border border-accent/20">Total: <span id="total-specs-count">0</span></span>
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="specialist-list-display"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: INFRAESTRUCTURA -->
+        <div id="infrastructure" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulario -->
+                <div class="panel-glass p-6 rounded-xl h-fit border-t-4 border-primary">
+                    <h3 class="font-tech font-bold uppercase text-primary mb-4 text-xl">Arquitectura</h3>
+                    
+                    <!-- Tabs internos -->
+                    <div class="flex mb-4 bg-black/20 rounded p-1">
+                        <button onclick="switchInfraMode('std')" id="btn-infra-std" class="flex-1 text-xs font-bold py-2 rounded bg-white/10 text-white transition">Estándar</button>
+                        <button onclick="switchInfraMode('cust')" id="btn-infra-cust" class="flex-1 text-xs font-bold py-2 rounded text-gray-400 hover:text-white transition">Personalizado</button>
+                    </div>
+
+                    <!-- Standard -->
+                    <div id="infra-std" class="space-y-4 animate-fade-in">
+                        <label class="block text-[10px] uppercase font-bold opacity-60 mb-1">Categoría</label>
+                        <select id="build-cat-select" class="w-full text-sm mb-2 p-2 bg-black/30" onchange="renderBuildTypes()"></select>
+                        <label class="block text-[10px] uppercase font-bold opacity-60 mb-1">Edificio</label>
+                        <select id="build-type-select" class="w-full text-sm mb-2 p-2 bg-black/30" onchange="updateBuildInfo()"></select>
+                        
+                        <!-- Info Panel v6 Dinámico -->
+                        <div id="build-info-panel" class="bg-black/40 p-3 rounded border border-white/10 text-xs font-mono space-y-1">
+                            <div class="flex justify-between"><span>Tiempo Base:</span> <span id="info-time" class="text-white">0d</span></div>
+                            <div class="flex justify-between"><span>Mano Obra:</span> <span id="info-labor" class="text-white">0</span></div>
+                            <div id="info-desc" class="text-center mt-2 font-bold text-accent text-[10px] border-t border-white/10 pt-1 hidden"></div>
+                            <div id="info-status" class="text-center mt-1 font-bold text-green-400">DISPONIBLE</div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <div class="w-1/2">
+                                <label class="block text-[10px] uppercase font-bold opacity-60 mb-1">Nivel</label>
+                                <select id="build-level-select" class="w-full text-sm p-2 bg-black/30" onchange="updateBuildInfo()">
+                                    <option value="1">Nivel 1</option>
+                                    <option value="2">Nivel 2</option>
+                                    <option value="3">Nivel 3</option>
+                                    <option value="4">Nivel 4</option>
+                                    <option value="5">Nivel 5</option>
+                                </select>
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-[10px] uppercase font-bold opacity-60 mb-1">Modo Const.</label>
+                                <select id="build-mode-select" class="w-full text-sm p-2 bg-black/30" onchange="updateBuildInfo()">
+                                    <option value="1.0">Normal (x1.0)</option>
+                                    <option value="0.5">Acelerado (x0.5)</option>
+                                    <option value="2.0">Sin Presión (x2.0)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="number" id="build-qty-input" value="1" class="w-full text-sm p-2 text-center font-bold bg-black/30 mt-2" placeholder="Cantidad">
+                    </div>
+
+                    <!-- Custom -->
+                    <div id="infra-cust" class="space-y-3 hidden animate-fade-in">
+                        <input type="text" id="cust-build-name" placeholder="Nombre Edificio" class="w-full text-sm p-2 bg-black/30">
+                        <select id="cust-build-cat" class="w-full text-sm p-2 bg-black/30"><option value="custom">General</option><option value="prod">Producción</option></select>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="cust-build-lvl" placeholder="Nivel" class="text-sm w-full p-2 bg-black/30">
+                            <input type="number" id="cust-build-qty" value="1" class="text-sm w-full p-2 bg-black/30">
+                        </div>
+                        <textarea id="cust-build-notes" placeholder="Notas" class="w-full text-xs p-2 bg-black/30 h-20"></textarea>
+                    </div>
+
+                    <button id="btn-build-action" onclick="addBuilding()" class="w-full bg-primary text-black font-bold py-3 rounded uppercase tracking-wider mt-6 hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">Construir</button>
+                </div>
+
+                <!-- Lista -->
+                <div class="lg:col-span-2 panel-glass p-6 rounded-xl min-h-[400px]">
+                    <h3 class="font-tech font-bold uppercase mb-4 text-xl">Catastro de Edificios</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" id="building-list-display"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: PRODUCCIÓN -->
+        <div id="production" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Ganadería -->
+                <div class="panel-glass p-5 rounded-xl border-t-4 border-red-400">
+                    <h3 class="font-tech font-bold text-red-400 uppercase border-b border-white/10 pb-2 flex items-center gap-2"><i class="fa-solid fa-cow"></i> Ganadería</h3>
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs mb-4">
+                        <div class="bg-black/20 p-2 rounded"><i class="fa-solid fa-egg mb-1 block opacity-50 text-yellow-200"></i><input type="number" id="ani-chicken" class="w-full text-center bg-transparent border-none font-bold" oninput="updateState()" placeholder="0"></div>
+                        <div class="bg-black/20 p-2 rounded"><i class="fa-solid fa-sheet-plastic mb-1 block opacity-50 text-gray-300"></i><input type="number" id="ani-sheep" class="w-full text-center bg-transparent border-none font-bold" oninput="updateState()" placeholder="0"></div>
+                        <div class="bg-black/20 p-2 rounded"><i class="fa-solid fa-bacon mb-1 block opacity-50 text-pink-300"></i><input type="number" id="ani-pig" class="w-full text-center bg-transparent border-none font-bold" oninput="updateState()" placeholder="0"></div>
+                        <div class="bg-black/20 p-2 rounded"><i class="fa-solid fa-cow mb-1 block opacity-50 text-white"></i><input type="number" id="ani-cow" class="w-full text-center bg-transparent border-none font-bold" oninput="updateState()" placeholder="0"></div>
+                    </div>
+                    
+                    <div class="bg-black/30 p-3 rounded mb-4">
+                        <label class="text-[10px] uppercase opacity-70 mb-1 block">Comida Asignada (Raciones)</label>
+                        <input type="number" id="food-allocated" class="w-full bg-black/50 border border-white/10 rounded p-1 text-sm text-center font-bold text-green-400" oninput="updateState()" value="0">
+                        <div class="flex justify-between mt-2 text-[10px] font-mono">
+                            <span>Requerida: <span id="food-required">0</span></span>
+                            <span id="nutrition-calc" class="font-bold text-white">0% Nutrición</span>
+                        </div>
+                    </div>
+
+                    <div class="text-xs space-y-1 font-mono pt-2 border-t border-white/10">
+                        <div class="flex justify-between"><span>Carne:</span> <span id="val-meat" class="font-bold text-red-400">0</span></div>
+                        <div class="flex justify-between opacity-70"><span>Huevos:</span> <span id="val-eggs">0</span></div>
+                        <div class="flex justify-between opacity-70"><span>Lana:</span> <span id="val-wool">0</span></div>
+                        <div class="flex justify-between opacity-70"><span>Cuero:</span> <span id="val-leather">0</span></div>
+                        <div class="flex justify-between opacity-70"><span>Leche:</span> <span id="val-milk">0</span></div>
+                    </div>
+                </div>
+
+                <!-- Agricultura y Pesca -->
+                <div class="panel-glass p-5 rounded-xl border-t-4 border-green-500">
+                    <h3 class="font-tech font-bold text-green-500 uppercase border-b border-white/10 pb-2 flex items-center gap-2"><i class="fa-solid fa-wheat-awn"></i> Agri & Pesca</h3>
+                    <div class="bg-black/20 p-2 rounded mb-4">
+                        <label class="text-[10px] uppercase font-bold opacity-50 mb-1 block">Tipo de Cultivo</label>
+                        <select id="prod-crop-type" class="w-full text-sm bg-transparent border-none p-1 font-bold text-green-100" onchange="updateState()">
+                            <option value="1.0">Granos (x1.0)</option>
+                            <option value="0.8">Verduras (x0.8)</option>
+                            <option value="1.2">Frutas (x1.2)</option>
+                            <option value="1.5">Especiales (x1.5)</option>
+                        </select>
+                    </div>
+                    <div class="text-xs space-y-2 font-mono">
+                        <div class="flex justify-between"><span>Huertos Activos:</span> <span id="val-farm-count" class="opacity-70">0</span></div>
+                        <div class="flex justify-between font-bold text-green-400"><span>Prod. Agrícola:</span> <span id="val-farm-total">0</span></div>
+                        <hr class="border-white/10">
+                        <div class="flex justify-between"><span>Muelles Activos:</span> <span id="val-dock-count" class="opacity-70">0</span></div>
+                        <div class="flex justify-between font-bold text-blue-400"><span>Prod. Pesca:</span> <span id="val-fish-total">0</span></div>
+                    </div>
+                </div>
+
+                <!-- Balances Generales -->
+                <div class="panel-glass p-5 rounded-xl border-t-4 border-yellow-500">
+                    <h3 class="font-tech font-bold text-yellow-500 uppercase border-b border-white/10 pb-2 flex items-center gap-2"><i class="fa-solid fa-scale-balanced"></i> Balances</h3>
+                    <div class="space-y-4 mt-4 text-center">
+                        <div>
+                            <div class="text-[10px] uppercase opacity-50">Balance Alimenticio</div>
+                            <div class="text-2xl font-mono font-bold" id="calc-food-bal">0</div>
+                            <div class="text-[9px] opacity-40">Prod vs Consumo (Humanos+Animales)</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase opacity-50">Balance Energético</div>
+                            <div class="text-2xl font-mono font-bold" id="calc-energy-bal">0</div>
+                            <div class="text-[9px] opacity-40">Generación vs Consumo Edificios</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: MILITAR -->
+        <div id="military" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Atacante -->
+                <div class="panel-glass p-6 rounded-xl border-l-4 border-red-500 relative">
+                    <h3 class="font-tech font-bold text-2xl text-red-500 uppercase mb-6 flex items-center gap-2">Fuerza Atacante</h3>
+                    <div class="space-y-5">
+                        <div class="space-y-2">
+                            <label class="text-[10px] uppercase font-bold opacity-60">Composición del Ejército</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div><label class="text-[9px] opacity-50 block">Normal (x0.8)</label><input type="number" id="att-sold-norm" class="w-full p-2 bg-black/30 font-bold text-xs" value="0" oninput="calcMilitary()"></div>
+                                <div><label class="text-[9px] opacity-50 block">Aprendiz (x1.0)</label><input type="number" id="att-sold-appr" class="w-full p-2 bg-black/30 font-bold text-xs" value="0" oninput="calcMilitary()"></div>
+                                <div><label class="text-[9px] opacity-50 block">Espec. (x1.5)</label><input type="number" id="att-sold-spec" class="w-full p-2 bg-black/30 font-bold text-xs" value="0" oninput="calcMilitary()"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><label class="text-[9px] opacity-50 block">Experto (x1.7)</label><input type="number" id="att-sold-exp" class="w-full p-2 bg-black/30 font-bold text-xs" value="0" oninput="calcMilitary()"></div>
+                                <div><label class="text-[9px] opacity-50 block">Veterano (x2.0)</label><input type="number" id="att-sold-vet" class="w-full p-2 bg-black/30 font-bold text-xs" value="0" oninput="calcMilitary()"></div>
+                            </div>
+                        </div>
+
+                        <div><label class="text-[10px] uppercase font-bold opacity-60">Arsenal</label>
+                            <div class="flex gap-2"><input type="number" id="att-weapons" placeholder="Armas (100%)" class="w-full p-2 bg-black/30" oninput="calcMilitary()"><input type="number" id="att-tools" placeholder="Herr. (25%)" class="w-full p-2 bg-black/30" oninput="calcMilitary()"></div>
+                        </div>
+                        
+                        <div class="text-xs bg-black/30 p-2 rounded">
+                            <div class="flex justify-between"><span>Especialistas/Vet:</span> <span id="att-specs-count">0</span></div>
+                            <div class="flex justify-between"><span>Fuerza Regular:</span> <span id="att-regular-count">0</span></div>
+                        </div>
+
+                        <div class="p-4 bg-red-900/20 border border-red-500/20 rounded text-center">
+                            <div class="text-[10px] uppercase opacity-50 tracking-widest">Poder Ofensivo</div>
+                            <div class="text-4xl font-black font-mono text-red-500" id="att-power-disp">0</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Defensor -->
+                <div class="panel-glass p-6 rounded-xl border-l-4 border-blue-500 relative">
+                    <h3 class="font-tech font-bold text-2xl text-blue-500 uppercase mb-6 flex items-center gap-2">Defensa Local</h3>
+                    <div class="space-y-5">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[10px] uppercase font-bold opacity-60">Defensores</label><input type="number" id="def-soldiers" class="w-full p-2 bg-black/30 font-bold" value="0" oninput="calcMilitary()"></div>
+                            <div>
+                                <label class="text-[10px] uppercase font-bold opacity-60">Experiencia Promedio</label>
+                                <select id="def-exp" class="w-full p-2 bg-black/30 text-xs" onchange="calcMilitary()">
+                                    <option value="1.0">Aprendices (1.0)</option><option value="1.5">Experimentados (1.5)</option><option value="2.0">Veteranos (2.0)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div><label class="text-[10px] uppercase font-bold opacity-60">Arsenal</label>
+                            <div class="flex gap-2"><input type="number" id="def-weapons" placeholder="Armas" class="w-full p-2 bg-black/30" oninput="calcMilitary()"><input type="number" id="def-tools" placeholder="Herr. (50%)" class="w-full p-2 bg-black/30" oninput="calcMilitary()"></div>
+                        </div>
+                        <div class="flex justify-between items-center bg-black/30 p-2 rounded text-xs"><span>Bonus Estructural</span><span class="font-bold text-blue-400" id="def-struct-bonus">+0%</span></div>
+                        <div class="p-4 bg-blue-900/20 border border-blue-500/20 rounded text-center">
+                            <div class="text-[10px] uppercase opacity-50 tracking-widest">Poder Defensivo</div>
+                            <div class="text-4xl font-black font-mono text-blue-500" id="def-power-disp">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: FÓRMULAS -->
+        <div id="formulas" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                <div class="panel-glass p-6 rounded-xl">
+                    <h3 class="font-tech font-bold text-accent uppercase mb-4 border-b border-white/10 pb-2">Combate & Militar</h3>
+                    <div class="formula-box"><span class="formula-title">Poder de Ataque</span>[ (Especialistas × Multiplicador) + (Regulares × 0.8) ] × [Ratio Equipamiento]</div>
+                    <div class="formula-box"><span class="formula-title">Multiplicadores</span>Aprendiz: x1.0 | Especialista: x1.5 | Experto: x1.7 | Maestro: x2.0</div>
+                    <div class="formula-box"><span class="formula-title">Ratio Equipamiento</span>( Armas + [ Herramientas × 0.25 ] ) ÷ Soldados</div>
+                    <div class="formula-box"><span class="formula-title">Poder Defensa</span>[ Poder Base ] × ( 1 + Bonus Estructural )</div>
+                </div>
+                <div class="panel-glass p-6 rounded-xl">
+                    <h3 class="font-tech font-bold text-green-500 uppercase mb-4 border-b border-white/10 pb-2">Producción & Consumo</h3>
+                    <div class="formula-box"><span class="formula-title">Agricultura</span>[Base Huerto] × [Cultivo] × ( 1 + [Specs Agrícolas × 0.2] )</div>
+                    <div class="formula-box"><span class="formula-title">Ganadería</span>( [Base Animal] × Cantidad ) × ( %Nutrición ÷ 100 ) × ( 1 + [Specs Ganaderos × 0.2] )</div>
+                    <div class="formula-box"><span class="formula-title">Nacimientos (Mensual)</span>( [Población Total] - [Niños] ) ÷ 4 ÷ 2</div>
+                    <div class="formula-box"><span class="formula-title">Consumo Comida</span>( Adultos × 1 ) + ( Niños × 0.5 ) + ( Ancianos × 0.7 )</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JS LOGIC -->
+    <script>
+        // --- DATA ---
+        const resourcesDB = [
+            { id: 'wood', name: 'Madera', type: 'primary', unit: 'u', prod: true },
+            { id: 'metal', name: 'Metal', type: 'primary', unit: 'u', prod: true },
+            { id: 'stone', name: 'Piedra', type: 'primary', unit: 'u', prod: true },
+            { id: 'scrap', name: 'Chatarra', type: 'primary', unit: 'u', prod: true },
+            { id: 'tools', name: 'Herramientas', type: 'primary', unit: 'u', prod: true },
+            { id: 'energia_ex', name: 'Energía Exc.', type: 'primary', unit: 'kW', prod: false },
+            { id: 'balas', name: 'Balas', type: 'production', unit: 'u', prod: true },
+            { id: 'armas', name: 'Armas', type: 'production', unit: 'u', prod: true },
+            { id: 'vehiculos', name: 'Vehículos', type: 'production', unit: 'u', prod: false },
+            { id: 'carne', name: 'Carne', type: 'production', unit: 'rac', prod: true },
+            { id: 'lana', name: 'Lana', type: 'production', unit: 'u', prod: true },
+            { id: 'cuero', name: 'Cuero', type: 'production', unit: 'u', prod: true },
+            { id: 'huevo', name: 'Huevos', type: 'production', unit: 'u', prod: true },
+            { id: 'leche', name: 'Leche', type: 'production', unit: 'u', prod: true },
+            { id: 'tela', name: 'Tela', type: 'conversion', unit: 'u' },
+            { id: 'decoracion', name: 'Decoraciones', type: 'conversion', unit: 'u' },
+            { id: 'concreto', name: 'Concreto', type: 'conversion', unit: 'u' },
+            { id: 'contenedores', name: 'Contenedores', type: 'conversion', unit: 'u' },
+            { id: 'quimicos', name: 'Químicos', type: 'conversion', unit: 'u' },
+            { id: 'suministros_med', name: 'Sum. Médicos', type: 'conversion', unit: 'u' },
+            { id: 'suministros_gen', name: 'Sum. Generales', type: 'conversion', unit: 'u' }, 
+            { id: 'componentes', name: 'Componentes', type: 'conversion', unit: 'u' },
+            { id: 'electronicos', name: 'Electrónicos', type: 'conversion', unit: 'u' },
+            { id: 'vidrio', name: 'Vidrio', type: 'conversion', unit: 'u' }
+        ];
+
+        // REQUISITOS DE NIVEL (SEGÚN INSTRUCCIONES)
+        const levelRequirements = {
+            1: { pop: 0, builds: 0, specs: 0 },
+            2: { pop: 10, builds: 3, specs: 0 },
+            3: { pop: 25, builds: 5, specs: 2 },
+            4: { pop: 50, builds: 15, specs: 8 },
+            5: { pop: 100, builds: 25, specs: 15 }
+        };
+
+        const conversionsDB = [
+            { out: 'componentes', qty: 1, req: [{id:'scrap', qty: 2}] },
+            { out: 'electronicos', qty: 1, req: [{id:'componentes', qty: 2}] },
+            { out: 'tela', qty: 1, req: [{id:'lana', qty: 2}] },
+            { out: 'decoracion', qty: 1, req: [{id:'wood', qty: 2}, {id:'tela', qty: 1}] },
+            { out: 'contenedores', qty: 1, req: [{id:'wood', qty: 2}] }, 
+            { out: 'concreto', qty: 1, req: [{id:'stone', qty: 3}] },
+            { out: 'vidrio', qty: 1, req: [{id:'scrap', qty: 2}] },
+            { out: 'quimicos', qty: 1, req: [{id:'scrap', qty: 2}, {id:'componentes', qty: 1}] },
+            { out: 'suministros_med', qty: 1, req: [{id:'tela', qty: 1}, {id:'quimicos', qty: 1}] },
+            { out: 'suministros_gen', qty: 1, req: [{id:'tela', qty: 1}, {id:'stone', qty: 1}] } 
+        ];
+
+        const buildingsData = {
+            "Muralla": { cat: 'def', levels: { 1: { time: 2, labor: 5, reqFac: 1 }, 2: { time: 4, labor: 9, reqFac: 1 }, 3: { time: 7, labor: 14, reqFac: 2 }, 4: { time: 12, labor: 19, reqFac: 3 }, 5: { time: 20, labor: 27, reqFac: 4 } } },
+            "Torre Vigilancia": { cat: 'def', levels: { 1: { time: 1.5, labor: 3, reqFac: 1 }, 2: { time: 3, labor: 6, reqFac: 1 }, 3: { time: 5, labor: 9, reqFac: 2 }, 4: { time: 8, labor: 14, reqFac: 3 }, 5: { time: 15, labor: 22, reqFac: 4 } } },
+            "Foso": { cat: 'def', levels: { 3: { time: 8, labor: 15, reqFac: 3 }, 4: { time: 15, labor: 27, reqFac: 4 }, 5: { time: 25, labor: 46, reqFac: 5 } } }, 
+            "Trinchera": { cat: 'def', levels: { 3: { time: 5, labor: 12, reqFac: 3 }, 4: { time: 10, labor: 23, reqFac: 4 }, 5: { time: 18, labor: 41, reqFac: 5 } } },
+            "Huerto": { cat: 'prod', levels: { 1: {time:2, labor:4}, 2: {time:3.5, labor:7}, 3: {time:5, labor:11}, 4: {time:8, labor:18}, 5: {time:14, labor:30} } },
+            "Granja": { cat: 'prod', levels: { 2: {time:4, labor:8}, 3: {time:6, labor:13}, 4: {time:10, labor:21}, 5: {time:18, labor:37} } },
+            "Muelle": { cat: 'prod', levels: { 1: {time:2, labor:5}, 2: {time:3.5, labor:8}, 3: {time:6, labor:15}, 4: {time:10, labor:24}, 5: {time:16, labor:40} } },
+            "Zona Recolección": { cat: 'prod', levels: { 1: {time:1, labor:3}, 2: {time:2.5, labor:6}, 3: {time:4, labor:10}, 4: {time:7, labor:17}, 5: {time:12, labor:28} } },
+            "Aserradero": { cat: 'prod', levels: { 1: {time:2, labor:6}, 2: {time:3.5, labor:10}, 3: {time:6, labor:17}, 4: {time:10, labor:26}, 5: {time:16, labor:45} } },
+            "Taller": { cat: 'prod', levels: { 1: {time:2, labor:3}, 2: {time:4, labor:6}, 3: {time:7, labor:12}, 4: {time:12, labor:19}, 5: {time:20, labor:34} } },
+            "Vivienda": { cat: 'hab', levels: { 1: {time:1, labor:3}, 2: {time:2, labor:6}, 3: {time:3.5, labor:9}, 4: {time:6, labor:14}, 5: {time:10, labor:22} } },
+            "Molino Eólico": { cat: 'en', levels: { 1: {time:2, labor:3}, 2: {time:3.5, labor:6}, 3: {time:6, labor:10} } },
+            "Panel Solar": { cat: 'en', levels: { 2: {time:4, labor:7}, 3: {time:8, labor:14}, 4: {time:12, labor:20}, 5: {time:18, labor:30} } },
+            "Hidroeléctrica": { cat: 'en', levels: { 4: {time:18, labor:40}, 5: {time:35, labor:75} } },
+            "Central Eléctrica": { cat: 'en', levels: { 4: {time:15, labor:32}, 5: {time:25, labor:53} } },
+            "Fáb. Municiones": { cat: 'mil', levels: { 3: {time:5, labor:11}, 4: {time:10, labor:22}, 5: {time:20, labor:47} } },
+            "Centro Ocio": { cat: 'social', levels: { 2: {time:3, labor:8}, 3: {time:6, labor:14}, 4: {time:12, labor:25}, 5: {time:20, labor:43} } },
+            "Centro Comunicaciones": { cat: 'social', levels: { 2: {time:3, labor:7}, 3: {time:6, labor:13}, 4: {time:12, labor:24} } },
+            "Zona de Comando": { cat: 'exp', levels: { 3: { time: 20, labor: 18, reqFac: 3, desc: "Célula de Comando" }, 4: { time: 30, labor: 28, reqFac: 4, desc: "Puesto de Comando" }, 5: { time: 40, labor: 40, reqFac: 5, desc: "Centro de Comando" } } },
+            "Expansión de Base": { cat: 'exp', levels: { 3: { time: 10, labor: 18, reqFac: 3, desc: "Reclamo de Tierras" }, 4: { time: 15, labor: 25, reqFac: 4, desc: "Edicto de Expansión" }, 5: { time: 20, labor: 40, reqFac: 5, desc: "Soberanía Territorial" } } }
+        };
+
+        const buildingCats = [
+            { id: 'def', name: 'Defensivo' }, { id: 'prod', name: 'Producción' }, { id: 'hab', name: 'Habitacional' },
+            { id: 'en', name: 'Energía' }, { id: 'mil', name: 'Militar' }, { id: 'social', name: 'Social/Tech' }, { id: 'exp', name: 'Expansión' }
+        ];
+
+        const specialistCats = [
+            { id: 'constr', name: 'Construcción' }, { id: 'sust', name: 'Sustento' },
+            { id: 'tech', name: 'Tecnología' }, { id: 'mil', name: 'Militar' }, { id: 'health', name: 'Salud' }
+        ];
+
+        let state = {
+            info: { name: "", level: 1, pass: "" },
+            census: { heavy: 0, medium: 0, light: 0, kids: 0, elders: 0 },
+            resources: {},
+            production: {},
+            specialists: [],
+            buildings: [], 
+            livestock: { chicken:0, sheep:0, pig:0, cow:0, food_alloc:0 },
+            settings: { theme: 'dark', exp_tiles: 1 },
+            military: { norm: 0, appr: 0, spec: 0, exp: 0, vet: 0, wep: 0, tools: 0 }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            resourcesDB.forEach(r => {
+                state.resources[r.id] = 0;
+                if(r.prod) state.production[r.id] = 0;
+            });
+            initUI();
+            updateState();
+        });
+
+        function initUI() {
+            const grids = {
+                primary: document.getElementById('res-primary-grid'),
+                production: document.getElementById('res-production-grid'),
+                conversion: document.getElementById('res-conversion-grid')
+            };
+            ['primary', 'production', 'conversion'].forEach(type => {
+                grids[type].innerHTML = resourcesDB.filter(r => r.type === type).map(r => `
+                    <div class="bg-black/20 p-2 rounded border border-white/5 group hover:bg-white/5 transition">
+                        <label class="text-[10px] uppercase font-bold opacity-60 block truncate mb-1">${r.name}</label>
+                        <div class="flex items-center gap-1">
+                            <input type="number" data-resid="${r.id}" value="0" class="w-full bg-transparent text-lg font-mono font-bold border-none p-0 focus:ring-0 res-input" oninput="updateResValue('${r.id}', this.value)">
+                            <span class="text-[10px] opacity-50">${r.unit}</span>
+                        </div>
+                        ${r.prod ? `<div class="text-[9px] text-right mt-1 font-mono" id="prod-ind-${r.id}">+0/d</div>` : ''}
+                    </div>`).join('');
+            });
+            renderConversions();
+            
+            document.getElementById('spec-cat-select').innerHTML = specialistCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            renderSpecTypes();
+            document.getElementById('build-cat-select').innerHTML = buildingCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            renderBuildTypes();
+        }
+
+        function renderConversions() {
+            document.getElementById('conversion-list').innerHTML = conversionsDB.map((c, idx) => {
+                const outRes = resourcesDB.find(r => r.id === c.out);
+                let maxPossible = Infinity;
+                let reqHtml = c.req.map(rq => {
+                    const avail = state.resources[rq.id] || 0;
+                    const possible = Math.floor(avail / rq.qty);
+                    maxPossible = Math.min(maxPossible, possible);
+                    const rName = resourcesDB.find(r => r.id === rq.id)?.name || rq.id;
+                    return `<div class="flex justify-between text-[10px] ${avail>=rq.qty?'text-gray-400':'text-red-400'}"><span>${rName}</span><span>${rq.qty}</span></div>`;
+                }).join('');
+                if(maxPossible === Infinity) maxPossible = 0;
+                const bg = maxPossible > 0 ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20' : 'bg-red-500/5 border-red-500/10 opacity-60';
+                return `<div class="p-3 rounded border ${bg} cursor-pointer mb-2" onclick="openConvertModal(${idx}, ${maxPossible})"><div class="flex justify-between border-b border-white/5 pb-1 mb-1"><span class="font-bold text-xs uppercase text-white">${outRes.name}</span><span class="text-[10px] bg-black/40 px-1 rounded text-white">x${c.qty}</span></div>${reqHtml}<div class="mt-1 text-right text-[10px] uppercase font-bold ${maxPossible>0?'text-green-400':'text-red-400'}">Posibles: ${maxPossible}</div></div>`;
+            }).join('');
+        }
+
+        function renderSpecTypes() {
+            const cat = document.getElementById('spec-cat-select').value;
+            const types = {
+                constr: ['Constructor', 'Arquitecto', 'Carpintero'], sust: ['Agricultor', 'Ganadero', 'Pescador'],
+                tech: ['Ingeniero', 'Técnico', 'Químico'], mil: ['Soldado', 'Armero'], health: ['Médico']
+            };
+            document.getElementById('spec-type-select').innerHTML = (types[cat]||[]).map(t => `<option value="${t}">${t}</option>`).join('');
+        }
+
+        function renderBuildTypes() {
+            const cat = document.getElementById('build-cat-select').value;
+            const select = document.getElementById('build-type-select');
+            select.innerHTML = '';
+            for (const [name, data] of Object.entries(buildingsData)) {
+                if(data.cat === cat) select.innerHTML += `<option value="${name}">${name}</option>`;
+            }
+            updateBuildInfo(); 
+        }
+
+        function updateBuildInfo() {
+            const name = document.getElementById('build-type-select').value;
+            const level = parseInt(document.getElementById('build-level-select').value);
+            const mode = parseFloat(document.getElementById('build-mode-select').value);
+            const data = buildingsData[name];
+            const btn = document.getElementById('btn-build-action');
+            const status = document.getElementById('info-status');
+            const desc = document.getElementById('info-desc');
+            
+            if(data && data.levels && data.levels[level]) {
+                const lvlData = data.levels[level];
+                const facLvl = state.info.level;
+                const reqLvl = lvlData.reqFac || 1; 
+                
+                if(lvlData.desc) { desc.innerText = lvlData.desc; desc.classList.remove('hidden'); } else { desc.classList.add('hidden'); }
+
+                if (facLvl >= reqLvl) {
+                    const finalTime = lvlData.time * mode;
+                    document.getElementById('info-time').innerText = finalTime.toFixed(1) + " días";
+                    document.getElementById('info-labor').innerText = lvlData.labor + " pers";
+                    status.innerText = "DISPONIBLE"; status.className = "text-center mt-1 font-bold text-green-400 text-xs";
+                    btn.disabled = false; btn.innerHTML = "Construir";
+                } else {
+                    document.getElementById('info-time').innerText = "---"; document.getElementById('info-labor').innerText = "---";
+                    status.innerText = `REQ: NIVEL FACCIÓN ${reqLvl}`; status.className = "text-center mt-1 font-bold text-red-500 text-xs";
+                    btn.disabled = true; btn.innerHTML = "<i class='fa-solid fa-lock'></i> Bloqueado";
+                }
+            } else {
+                document.getElementById('info-time').innerText = "---"; document.getElementById('info-labor').innerText = "---";
+                desc.classList.add('hidden'); status.innerText = "NO DISPONIBLE EN ESTE NIVEL";
+                status.className = "text-center mt-1 font-bold text-gray-500 text-xs";
+                btn.disabled = true; btn.innerHTML = "No Disponible";
+            }
+        }
+
+        function renderBuildingList() {
+            document.getElementById('building-list-display').innerHTML = state.buildings.map((b, i) => {
+                let time = "?"; let laborReq = "?"; let customName = "";
+                if(!b.custom) {
+                    const data = buildingsData[b.type];
+                    if(data && data.levels[b.level]) {
+                        time = (data.levels[b.level].time * (b.mode || 1)).toFixed(1);
+                        laborReq = data.levels[b.level].labor * b.qty;
+                        if(data.levels[b.level].desc) customName = ` - ${data.levels[b.level].desc}`;
+                    }
+                }
+                return `<div class="bg-black/20 p-3 rounded border border-white/5 relative group hover:bg-white/5 transition"><div class="font-bold text-xs uppercase text-primary mb-1">${b.type} ${b.custom?'(C)':''}${customName}</div><div class="flex justify-between text-[10px] opacity-70 mb-1"><span class="bg-white/5 px-1.5 rounded">Nvl ${b.level}</span><span class="font-bold">x${b.qty}</span></div><div class="text-[9px] font-mono text-gray-400"><i class="fa-solid fa-clock"></i> ${time}d | <i class="fa-solid fa-hammer"></i> ${laborReq} MO</div><button onclick="state.buildings.splice(${i},1);renderBuildingList();updateState()" class="absolute top-2 right-2 text-red-500 opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash"></i></button></div>`;
+            }).join('');
+        }
+
+        // UPDATE RES VALUE: BLINDADO
+        function updateResValue(id, val) { 
+            state.resources[id] = parseFloat(val) || 0; 
+            updateState(); 
+        }
+
+        function updateState() {
+            state.info.name = document.getElementById('factionName').value;
+            state.info.level = parseInt(document.getElementById('factionLevel').value) || 1;
+            if(document.getElementById('build-type-select').value) updateBuildInfo();
+            state.census.heavy = parseInt(document.getElementById('pop-heavy').value) || 0;
+            state.census.medium = parseInt(document.getElementById('pop-medium').value) || 0;
+            state.census.light = parseInt(document.getElementById('pop-light').value) || 0;
+            state.census.elders = parseInt(document.getElementById('pop-elders').value) || 0;
+            state.livestock.chicken = parseInt(document.getElementById('ani-chicken').value) || 0;
+            state.livestock.sheep = parseInt(document.getElementById('ani-sheep').value) || 0;
+            state.livestock.pig = parseInt(document.getElementById('ani-pig').value) || 0;
+            state.livestock.cow = parseInt(document.getElementById('ani-cow').value) || 0;
+            state.livestock.food_alloc = parseInt(document.getElementById('food-allocated').value) || 0;
+            
+            // New Military State
+            state.military.norm = parseInt(document.getElementById('att-sold-norm').value)||0;
+            state.military.appr = parseInt(document.getElementById('att-sold-appr').value)||0;
+            state.military.spec = parseInt(document.getElementById('att-sold-spec').value)||0;
+            state.military.exp = parseInt(document.getElementById('att-sold-exp').value)||0;
+            state.military.vet = parseInt(document.getElementById('att-sold-vet').value)||0;
+            state.military.wep = parseInt(document.getElementById('att-weapons').value) || 0;
+            state.military.tools = parseInt(document.getElementById('att-tools').value) || 0;
+
+            const totalAdults = state.census.heavy + state.census.medium + state.census.light;
+            const totalPop = totalAdults + state.census.kids + state.census.elders;
+            
+            let laborProd = 0;
+            state.specialists.forEach(s => laborProd += s.qty);
+            
+            let laborConst = 0; 
+            state.buildings.forEach(b => {
+                if(!b.custom) {
+                    const data = buildingsData[b.type];
+                    if(data && data.levels[b.level]) laborConst += data.levels[b.level].labor * b.qty;
+                }
+            });
+
+            const laborFree = totalAdults - laborProd - laborConst; 
+            document.getElementById('total-adults').innerText = totalAdults;
+            document.getElementById('labor-prod').innerText = laborProd;
+            document.getElementById('labor-const').innerText = laborConst;
+            document.getElementById('labor-free').innerText = laborFree;
+            document.getElementById('labor-alert').classList.toggle('hidden', laborFree >= 0);
+
+            // NIVEL REAL (CALCULO MEJORADO)
+            const nextLvl = Math.min(5, state.info.level + 1);
+            document.getElementById('next-level-num').innerText = nextLvl;
+            const req = levelRequirements[nextLvl] || { pop: 999, builds: 999, specs: 999 };
+            
+            const curBuilds = state.buildings.reduce((a,b)=>a+b.qty,0);
+            const curSpecs = state.specialists.reduce((a,b)=>a+b.qty,0);
+            
+            document.getElementById('req-pop-status').innerText = `${totalAdults} / ${req.pop}`;
+            document.getElementById('req-build-status').innerText = `${curBuilds} / ${req.builds}`;
+            document.getElementById('req-spec-status').innerText = `${curSpecs} / ${req.specs}`;
+            
+            const p1 = Math.min(1, totalAdults / req.pop);
+            const p2 = Math.min(1, curBuilds / req.builds);
+            const p3 = Math.min(1, curSpecs / (req.specs || 1)); // Evitar div 0
+            const totalProgress = ((p1 + p2 + p3) / 3) * 100;
+            
+            document.getElementById('level-progress-bar').style.width = totalProgress + "%";
+            document.getElementById('level-percent').innerText = totalProgress.toFixed(0) + "%";
+
+            // PRODUCCIÓN
+            const reqFood = (state.livestock.chicken*0.2) + (state.livestock.sheep*3) + (state.livestock.pig*5) + (state.livestock.cow*10);
+            document.getElementById('food-required').innerText = reqFood.toFixed(1);
+            let nutriPct = reqFood > 0 ? (state.livestock.food_alloc / reqFood) * 100 : 100;
+            nutriPct = Math.min(100, nutriPct);
+            document.getElementById('nutrition-calc').innerText = nutriPct.toFixed(0) + "% Nutrición";
+
+            const factor = nutriPct / 100;
+            const meat = ((state.livestock.chicken*0.5 + state.livestock.pig*2 + state.livestock.sheep*3 + state.livestock.cow*5) * factor);
+            document.getElementById('val-meat').innerText = meat.toFixed(1);
+            document.getElementById('val-eggs').innerText = (state.livestock.chicken * 1 * factor).toFixed(1);
+            document.getElementById('val-wool').innerText = (state.livestock.sheep * 5 * factor).toFixed(1);
+            document.getElementById('val-leather').innerText = (state.livestock.cow * 3 * factor).toFixed(1);
+            document.getElementById('val-milk').innerText = (state.livestock.cow * 3 * factor).toFixed(1);
+
+            const agriSpecs = countSpecs('Agricultor');
+            const fishSpecs = countSpecs('Pescador');
+            const farms = countBuildings('Huerto') + countBuildings('Granja');
+            const docks = countBuildings('Muelle');
+            const agriProd = farms * 10 * parseFloat(document.getElementById('prod-crop-type').value) * (1 + agriSpecs*0.2);
+            const fishProd = docks * 15 * (1 + fishSpecs*0.2);
+            
+            document.getElementById('val-farm-count').innerText = farms;
+            document.getElementById('val-farm-total').innerText = agriProd.toFixed(1);
+            document.getElementById('val-dock-count').innerText = docks;
+            document.getElementById('val-fish-total').innerText = fishProd.toFixed(1);
+
+            const foodCons = ((totalAdults*1) + (state.census.kids*0.5) + (state.census.elders*0.7)) + reqFood; 
+            const totalFood = agriProd + fishProd + meat;
+            document.getElementById('calc-food-bal').innerText = (totalFood - foodCons).toFixed(1);
+
+            let enGen = 0;
+            state.buildings.forEach(b => {
+                if(b.type === 'Molino Eólico') enGen += 10 * b.qty;
+                if(b.type === 'Panel Solar') enGen += 20 * b.qty;
+                if(b.type === 'Hidroeléctrica') enGen += 100 * b.qty; 
+            });
+            const buffElec = countBuildings('Central Eléctrica') > 0 ? 1.5 : 1.0;
+            enGen *= buffElec;
+            const enCons = state.buildings.length * 2; 
+            document.getElementById('calc-energy-bal').innerText = (enGen - enCons).toFixed(0);
+
+            updateResInd('carne', meat);
+            updateResInd('huevo', state.livestock.chicken * factor);
+
+            document.getElementById('summary-pop').innerText = totalPop;
+            document.getElementById('summary-builds').innerText = state.buildings.reduce((a,b)=>a+b.qty,0);
+            document.getElementById('summary-energy').innerText = (enGen - enCons).toFixed(0);
+            document.getElementById('summary-food').innerText = (totalFood - foodCons).toFixed(1);
+
+            // EJECUCIÓN SEGURA
+            try { calcMilitary(); } catch(e) { console.error("Error Mil", e); }
+            renderConversions(); 
+        }
+
+        function countSpecs(type) { return state.specialists.filter(s => s.type === type).reduce((a, b) => a + (b.qty * parseFloat(b.lvl)), 0); }
+        function countBuildings(type) { return state.buildings.filter(b => b.type.includes(type)).reduce((a, b) => a + b.qty, 0); }
+        function updateResInd(id, val) { const el = document.getElementById(`prod-ind-${id}`); if(el) { el.innerText = `+${val.toFixed(1)}/d`; el.className = val>0?'text-[9px] text-green-400 text-right mt-1':'text-[9px] text-gray-500 text-right mt-1'; } }
+
+        function addSpecialist() {
+            state.specialists.push({
+                cat: document.getElementById('spec-cat-select').value, type: document.getElementById('spec-type-select').value,
+                lvl: document.getElementById('spec-level-select').value, qty: parseInt(document.getElementById('spec-qty-input').value)
+            });
+            renderSpecialistList(); updateState();
+        }
+        function renderSpecialistList() {
+            document.getElementById('specialist-list-display').innerHTML = state.specialists.map((s,i) => `
+                <div class="flex justify-between bg-black/20 p-2 rounded border border-white/5">
+                    <div><div class="font-bold text-xs text-accent">${s.type}</div><div class="text-[9px] opacity-50">x${s.qty}</div></div>
+                    <button onclick="state.specialists.splice(${i},1);renderSpecialistList();updateState()" class="text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                </div>`).join('');
+            document.getElementById('total-specs-count').innerText = state.specialists.reduce((a,b)=>a+b.qty,0);
+        }
+
+        function switchInfraMode(m) {
+            if(m==='std') { 
+                document.getElementById('infra-std').classList.remove('hidden'); document.getElementById('infra-cust').classList.add('hidden');
+                document.getElementById('btn-infra-std').classList.add('bg-white/10','text-white'); document.getElementById('btn-infra-std').classList.remove('text-gray-400');
+                document.getElementById('btn-infra-cust').classList.remove('bg-white/10','text-white'); document.getElementById('btn-infra-cust').classList.add('text-gray-400');
+            } else {
+                document.getElementById('infra-std').classList.add('hidden'); document.getElementById('infra-cust').classList.remove('hidden');
+                document.getElementById('btn-infra-cust').classList.add('bg-white/10','text-white'); document.getElementById('btn-infra-cust').classList.remove('text-gray-400');
+                document.getElementById('btn-infra-std').classList.remove('bg-white/10','text-white'); document.getElementById('btn-infra-std').classList.add('text-gray-400');
+            }
+        }
+        function addBuilding() {
+            let b = {};
+            if(!document.getElementById('infra-cust').classList.contains('hidden')) {
+                b = { type: document.getElementById('cust-build-name').value, cat: 'custom', level: 1, qty: 1, custom: true, mode: 1 };
+            } else {
+                b = { 
+                    type: document.getElementById('build-type-select').value, cat: document.getElementById('build-cat-select').value,
+                    level: parseInt(document.getElementById('build-level-select').value), qty: parseInt(document.getElementById('build-qty-input').value),
+                    mode: parseFloat(document.getElementById('build-mode-select').value)
+                };
+            }
+            state.buildings.push(b); renderBuildingList(); updateState();
+        }
+
+        function calcMilitary() {
+            // New Inputs
+            const sNorm = parseInt(document.getElementById('att-sold-norm').value)||0;
+            const sAppr = parseInt(document.getElementById('att-sold-appr').value)||0;
+            const sSpec = parseInt(document.getElementById('att-sold-spec').value)||0;
+            const sExp = parseInt(document.getElementById('att-sold-exp').value)||0;
+            const sVet = parseInt(document.getElementById('att-sold-vet').value)||0;
+
+            const totalSoldiers = sNorm + sAppr + sSpec + sExp + sVet;
+            
+            // Base Power Calc
+            let baseAtt = (sNorm * 0.8) + (sAppr * 1.0) + (sSpec * 1.5) + (sExp * 1.7) + (sVet * 2.0);
+
+            // Equipment Logic
+            const weapons = parseInt(document.getElementById('att-weapons').value)||0;
+            const tools = parseInt(document.getElementById('att-tools').value)||0;
+            
+            // Patch 2: Tools = 0.25
+            const equipVal = weapons + (tools * 0.25);
+            const ratio = totalSoldiers > 0 ? equipVal / totalSoldiers : 0;
+            
+            let mod = 1.0;
+            // Patch 2: Ratio Buff/Debuff Logic
+            if(ratio < 0.5) mod = 0.5;
+            else if(ratio < 1.0) mod = 0.75;
+            else if(ratio <= 1.2) mod = 1.0;
+            else mod = 1.25;
+
+            document.getElementById('att-power-disp').innerText = (baseAtt * mod).toFixed(1);
+            
+            // Update Summary Display
+            document.getElementById('att-specs-count').innerText = sSpec + sExp + sVet;
+            document.getElementById('att-regular-count').innerText = sNorm + sAppr;
+
+            // Defender Logic (Existing)
+            const defSold = parseInt(document.getElementById('def-soldiers').value)||0;
+            const defExp = parseFloat(document.getElementById('def-exp').value);
+            const walls = countBuildings('Muralla') * 0.1;
+            const towers = countBuildings('Torre') * 0.15;
+            const defBonus = walls + towers;
+            document.getElementById('def-struct-bonus').innerText = `+${(defBonus*100).toFixed(0)}%`;
+            document.getElementById('def-power-disp').innerText = (defSold * defExp * (1+defBonus)).toFixed(1);
+        }
+
+        function saveSystem() {
+            updateState(); // Sync before save
+            if(!state.info.pass) {
+                const p = prompt("Crear contraseña de archivo:");
+                if(p) state.info.pass = btoa(p); else return;
+            }
+            const blob = new Blob([JSON.stringify(state)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `GESTOR_v6_${state.info.name||'Faccion'}.json`;
+            document.getElementById('save-filename').innerText = a.download;
+            document.getElementById('modal-save-confirm').classList.remove('hidden');
+            a.click();
+        }
+
+        function loadSystem(input) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    if(data.info.pass) { 
+                        // Store temp data and ask pass
+                        window.tempLoad = data; 
+                        document.getElementById('modal-password').classList.remove('hidden'); 
+                    } else applyData(data);
+                } catch(e) { alert("Error de archivo"); }
+            };
+            reader.readAsText(file);
+        }
+        function verifyPassword() {
+            if(btoa(document.getElementById('filePassInput').value) === window.tempLoad.info.pass) {
+                applyData(window.tempLoad); document.getElementById('modal-password').classList.add('hidden');
+            } else alert("Contraseña incorrecta");
+        }
+        function applyData(d) {
+            state = d;
+            // Restore UI Inputs
+            document.getElementById('factionName').value = state.info.name;
+            document.getElementById('factionLevel').value = state.info.level;
+            document.getElementById('pop-heavy').value = state.census.heavy;
+            document.getElementById('pop-medium').value = state.census.medium;
+            document.getElementById('pop-light').value = state.census.light;
+            document.getElementById('pop-kids').value = state.census.kids;
+            document.getElementById('pop-elders').value = state.census.elders;
+            
+            document.getElementById('ani-chicken').value = state.livestock.chicken;
+            document.getElementById('ani-sheep').value = state.livestock.sheep;
+            document.getElementById('ani-pig').value = state.livestock.pig;
+            document.getElementById('ani-cow').value = state.livestock.cow;
+            document.getElementById('food-allocated').value = state.livestock.food_alloc;
+
+            if(state.military) {
+                // Restore New Military Inputs
+                document.getElementById('att-sold-norm').value = state.military.norm || 0;
+                document.getElementById('att-sold-appr').value = state.military.appr || 0;
+                document.getElementById('att-sold-spec').value = state.military.spec || 0;
+                document.getElementById('att-sold-exp').value = state.military.exp || 0;
+                document.getElementById('att-sold-vet').value = state.military.vet || 0;
+                document.getElementById('att-weapons').value = state.military.wep;
+                document.getElementById('att-tools').value = state.military.tools;
+            }
+            
+            // Restore Resources (Input values)
+            for(const [k, v] of Object.entries(state.resources)) {
+                const input = document.querySelector(`input[data-resid="${k}"]`);
+                if(input) input.value = v;
+            }
+
+            renderBuildingList(); renderSpecialistList(); initUI(); updateState();
+        }
+
+        function setTab(id) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'bg-white/5', 'border-primary'));
+            const btn = document.querySelector(`[data-target="${id}"]`);
+            if(btn) btn.classList.add('active', 'bg-white/5', 'border-primary');
+        }
+        function setTheme(t) { document.documentElement.className = t; state.settings.theme = t; }
+        
+        let curConvIdx = -1; let curMax = 0;
+        function openConvertModal(idx, max) {
+            curConvIdx = idx; curMax = max;
+            const desc = document.getElementById('convert-desc');
+            const modal = document.getElementById('modal-convert');
+            if(desc && modal) { desc.innerText = `Producir (Máx: ${max})`; document.getElementById('convert-amount').value = 1; modal.classList.remove('hidden'); }
+        }
+        function executeConversion(all) {
+            if(curConvIdx === -1) return;
+            const amt = all ? curMax : parseInt(document.getElementById('convert-amount').value);
+            if(amt <= 0) return alert("Cantidad inválida");
+            if(amt > curMax) return alert("Recursos insuficientes");
+            const c = conversionsDB[curConvIdx];
+            c.req.forEach(r => state.resources[r.id] -= r.qty * amt);
+            state.resources[c.out] = (state.resources[c.out] || 0) + c.qty * amt;
+            updateState(); document.getElementById('modal-convert').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
